@@ -5,17 +5,15 @@ import { client } from "@/lib/client";
 import { useRealtime } from "@/lib/realtime-client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useParams } from "next/navigation";
+import { useParams,useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-
 function formatTimeRemaining(seconds: number) {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return (`${mins}:${secs.toString().padStart(2, "0")}`)
 }
 
-const room = () => {
+const Room = () => {
   const params = useParams();
   const roomId = params.roomId as string;
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -24,6 +22,7 @@ const room = () => {
   const inputRef=useRef<HTMLInputElement>(null);
   const {username}=useUsername();
   const router=useRouter();
+  const msgRef=useRef<HTMLDivElement>(null);
   
 
   const {data:messages,refetch}=useQuery({
@@ -117,7 +116,7 @@ const room = () => {
 
 
   return (
-    <main className="flex flex-col overflow-hidden h-screen max-h-screen transition-all">
+    <main className="flex flex-col mx-4 overflow-hidden h-screen max-h-screen transition-all">
       <header className="border-b border-zinc-800 px-8 py-4 flex items-center justify-between bg-zinc-900/30">
         <div className="flex items-center gap-4">
           <div className="flex flex-col">
@@ -152,54 +151,53 @@ const room = () => {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-        {messages?.messages.length===0 && (
-          <div className="flex items-center justify-center h-full">
-            No messages yet, start the conversation.
-          </div>
-        )}
-        {messages?.messages.map((msg)=>(
-          <div key={msg.id} className="flex flex-col items-start">
-              <div className="max-w-[80%] group">
-                <div className="flex items-baseline gap-3 mb-1">
-                  <span className={`text-xs font-bold ${msg.sender===username?"text-green-500":"text-blue-500"}`}>
-                    {msg.sender===username?"YOU":msg.sender}
-                  </span>
-                  <span className="text-[10px] text-zinc-600">{format(msg.timestamp,"HH:mm")}</span>
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
+        <div className="max-w-4xl mx-auto p-4 space-y-4">
+          {messages?.messages.length===0 && (
+            <div className="flex items-center justify-center h-full text-zinc-500 py-10">
+              No messages yet, start the conversation.
+            </div>
+          )}
+          {messages?.messages.map((msg)=>(
+            <div key={msg.id} className={`flex flex-col ${msg.sender === username ? "items-end" : "items-start"}`}>
+                <div className="max-w-[60%] group">
+                  <div className={`flex items-baseline gap-3 mb-1`}>
+                      <span className={`text-xs font-bold ${msg.sender===username?"text-green-500":"text-blue-500"}`}>
+                        {msg.sender===username?"YOU":msg.sender}
+                      </span>
+                      <span className="text-[10px] text-zinc-600">{format(msg.timestamp,"HH:mm")}</span>
+                    </div>
+                  </div>
+                  <div ref={msgRef} className={`flex ${msg.sender === username ? "items-end" : "items-start"} text-sm max-w-[60%] break-words leading-relaxed text-zinc-300 `}>
+                    {msg.text}
+                  </div>
                 </div>
-                <div className="flex text-sm break-all leading-relaxed text-zinc-300">
-                  {msg.text}
-                </div>
-              </div>
-          </div>
-        ))} 
+          ))} 
+        </div>
       </div>
 
-      <div className="p-6  border-t border-zinc-800 bg-zinc-900/30">
-              <div className="flex gap-4">
-                <div className="flex-1 relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-green-500 animate-pulse">{">"}</span>
-                  <input autoFocus 
-                  onKeyDown={(e)=>{
-                    if(e.key==="Enter" && input.trim()){
-                      sendMessage({text:input})
-                      inputRef.current?.focus()
-                    }
-                  }} 
+      <div className="p-6 border-t border-zinc-800 bg-zinc-900/30">
+        <div className="max-w-4xl mx-auto flex gap-4">
+          <div className="flex-1 relative group">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-green-500 animate-pulse">{">"}</span>
+            <input autoFocus 
+            onKeyDown={(e)=>{
+              if(e.key==="Enter" && input.trim()){
+                sendMessage({text:input})
+                inputRef.current?.focus()
+              }
+            }} 
+            placeholder="Type message..."
+            value={input} onChange={(e)=>setInput(e.target.value)} type="text" className="w-full bg-black border border-zinc-800 text-sm rounded focus:outline-none focus:border-zinc-700 text-zinc-100 transition-colors pl-8 pr-4 py-4" />
+          </div>
 
-
-        
-                  placeholder="Type message..."
-                  value={input} onChange={(e)=>setInput(e.target.value)} type="text" className="w-full bg-black border border-zinc-800 text-sm rounded focus:outline-none focus:border-zinc-700 text-zinc-100 transition-colors pl-8 pr-4 py-4" />
-                </div>
-
-                <button onClick={()=>{
-                  sendMessage({text:input})
-                  inputRef.current?.focus();
-                  }}
-                  disabled={!input.trim()||isPending}
-                  className="uppercase bg-zinc-800 text-sm font-bold hover:text-green-500 text-zinc-400 transition-all hover:shadow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-6 rounded">send</button>
-              </div>
+          <button onClick={()=>{
+            sendMessage({text:input})
+            inputRef.current?.focus();
+            }}
+            disabled={!input.trim()||isPending}
+            className="uppercase bg-zinc-800 text-sm font-bold hover:text-green-500 text-zinc-400 transition-all hover:shadow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed px-6 rounded">send</button>
+        </div>
       </div>
       
 
@@ -208,4 +206,4 @@ const room = () => {
   )
 }
 
-export default room
+export default Room
